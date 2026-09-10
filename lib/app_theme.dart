@@ -1,39 +1,23 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // Dark Theme Colors
-  static const Color darkBackground = Color(0xFF121212);
-  static const Color darkCardColor = Color(0xFF1E1E1E);
-  static const Color accentRed = Color(0xFFFF3B30);
-  
-  // Light Theme Colors
-  static const Color lightBackground = Color(0xFFF8F9FA);
-  static const Color lightCardColor = Color(0xFFFFFFFF);
-  
-  // Semantic Colors
-  static const Color statusGreen = Color(0xFF34C759);
-  static const Color statusYellow = Color(0xFFFFCC00);
-  static const Color statusRed = Color(0xFFFF3B30);
-
   static ThemeData darkTheme = ThemeData(
     brightness: Brightness.dark,
-    scaffoldBackgroundColor: darkBackground,
-    primaryColor: accentRed,
+    scaffoldBackgroundColor: const Color(0xFF121212),
+    primaryColor: const Color(0xFFFF3B30),
     colorScheme: const ColorScheme.dark(
-      surface: darkCardColor,
-      primary: accentRed,
+      surface: Color(0xFF1E1E1E),
+      primary: Color(0xFFFF3B30),
     ),
-    fontFamily: 'SF Pro Display',
   );
 
   static ThemeData lightTheme = ThemeData(
     brightness: Brightness.light,
-    scaffoldBackgroundColor: lightBackground,
-    primaryColor: accentRed,
+    scaffoldBackgroundColor: Colors.white,
+    primaryColor: const Color(0xFFFF3B30),
     colorScheme: const ColorScheme.light(
-      surface: lightCardColor,
-      primary: accentRed,
+      surface: Color(0xFFF2F2F7), // Light grey container for contrast against pure white
+      primary: Color(0xFFFF3B30),
     ),
-    fontFamily: 'SF Pro Display',
   );
 }

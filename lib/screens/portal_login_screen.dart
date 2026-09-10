@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../session_manager.dart';
 import '../services/portal_service.dart';
 
 class PortalLoginScreen extends StatefulWidget {
@@ -16,25 +17,37 @@ class _PortalLoginScreenState extends State<PortalLoginScreen> {
 
   void _handlePortalLogin() async {
     setState(() => _isLoading = true);
-    
-    await PortalService.fetchAttendance(
+
+    List<Map<String, dynamic>> liveData = await PortalService.fetchAttendanceFromBackend(
       _usernameController.text.trim(),
       _passwordController.text.trim(),
     );
 
     setState(() => _isLoading = false);
 
-    if (mounted) {
-      Navigator.pop(context, true); // Return to home with updated data
+    if (liveData.isNotEmpty) {
+      await SessionManager.saveAttendance(liveData);
+      if (mounted) {
+        Navigator.pop(context, true); // Return to attendance screen with fresh live data
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to fetch live attendance. Check backend or credentials.')),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
+    Color surfaceColor = isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF2F2F7);
+
     return Scaffold(
       appBar: AppBar(
+        title: const Text('College Portal Sign-In'),
         backgroundColor: Colors.transparent,
-        elevation: 0,
       ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -42,12 +55,12 @@ class _PortalLoginScreenState extends State<PortalLoginScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'College Portal Login',
-              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+              'SRU Portal Login',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             const Text(
-              'Login with your college credentials to fetch your attendance and timetable.',
+              'Proxied securely via backend scraper.',
               style: TextStyle(color: Colors.grey, fontSize: 14),
             ),
             const SizedBox(height: 32),
@@ -55,7 +68,6 @@ class _PortalLoginScreenState extends State<PortalLoginScreen> {
               controller: _usernameController,
               decoration: const InputDecoration(
                 labelText: 'Username / Roll No.',
-                prefixIcon: Icon(Icons.person_outline),
                 border: OutlineInputBorder(),
               ),
             ),
@@ -65,12 +77,11 @@ class _PortalLoginScreenState extends State<PortalLoginScreen> {
               obscureText: _obscurePassword,
               decoration: InputDecoration(
                 labelText: 'Password',
-                prefixIcon: const Icon(Icons.lock_outline),
+                border: const OutlineInputBorder(),
                 suffixIcon: IconButton(
                   icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
                   onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                 ),
-                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 24),
@@ -84,17 +95,9 @@ class _PortalLoginScreenState extends State<PortalLoginScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 onPressed: _isLoading ? null : _handlePortalLogin,
-                child: _isLoading 
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text('Login →', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Center(
-              child: Text(
-                'Your credentials are secure and only used to fetch your data.',
-                style: TextStyle(color: Colors.grey, fontSize: 12),
-                textAlign: TextAlign.center,
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text('Sign In & Sync Attendance', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
           ],
