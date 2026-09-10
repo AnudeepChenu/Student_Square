@@ -4,20 +4,31 @@ import 'screens/home_screen.dart';
 import 'screens/timetable_screen.dart';
 import 'screens/attendance_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/login_screen.dart';
+import 'session_manager.dart';
 
-void main() {
-  runApp(const StudentSquareApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Uncomment the line below once if your session is stuck, then comment it back out
+  // await SessionManager.clearSession();
+
+  final profile = await SessionManager.getProfile();
+  final bool isLoggedIn = profile.isNotEmpty && profile['name'] != null;
+
+  runApp(StudentSquareApp(isLoggedIn: isLoggedIn));
 }
 
 class StudentSquareApp extends StatefulWidget {
-  const StudentSquareApp({super.key});
+  final bool isLoggedIn;
+  const StudentSquareApp({super.key, required this.isLoggedIn});
 
   @override
   State<StudentSquareApp> createState() => _StudentSquareAppState();
 }
 
 class _StudentSquareAppState extends State<StudentSquareApp> {
-  bool _isDarkMode = true;
+  late bool _isDarkMode = true;
 
   void toggleTheme() {
     setState(() {
@@ -41,10 +52,15 @@ class _StudentSquareAppState extends State<StudentSquareApp> {
         scaffoldBackgroundColor: Colors.black,
         primaryColor: const Color(0xFFFF3B30),
       ),
-      home: MainNavigationWrapper(
-        onThemeChanged: toggleTheme,
-        isDarkMode: _isDarkMode,
-      ),
+      home: widget.isLoggedIn
+          ? MainNavigationWrapper(
+              onThemeChanged: toggleTheme,
+              isDarkMode: _isDarkMode,
+            )
+          : LoginScreen(
+              onThemeChanged: toggleTheme,
+              isDarkMode: _isDarkMode,
+            ),
     );
   }
 }
@@ -105,7 +121,6 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
             child: Container(
               height: 64,
               decoration: BoxDecoration(
-                // Increased transparency from 0.75 to 0.40
                 color: (isDark ? const Color(0xFF1C1C1E) : Colors.white).withOpacity(0.40),
                 borderRadius: BorderRadius.circular(32),
                 border: Border.all(
