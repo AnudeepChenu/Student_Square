@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'services/notification_helper.dart';
 
 class SessionManager {
   static const String _keySession = 'user_session';
@@ -38,6 +40,12 @@ class SessionManager {
     await prefs.remove(_keySession);
     await prefs.remove(_keyAttendance);
     await prefs.remove(_keyTimetable);
+    
+    try {
+      final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+          FlutterLocalNotificationsPlugin();
+      await flutterLocalNotificationsPlugin.cancelAll();
+    } catch (_) {}
   }
 
   static Future<void> saveAttendance(List<Map<String, dynamic>> attendanceData) async {
@@ -55,6 +63,15 @@ class SessionManager {
   static Future<void> saveTimetable(List<Map<String, dynamic>> timetableData) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyTimetable, jsonEncode(timetableData));
+    
+    try {
+      final notificationsEnabled = await getNotificationPreference();
+      if (notificationsEnabled) {
+        await NotificationHelper.scheduleClassNotifications(timetableData);
+      }
+    } catch (e) {
+      print("Notification scheduling error: $e");
+    }
   }
 
   static Future<List<Map<String, dynamic>>> getTimetable() async {
@@ -87,10 +104,25 @@ class SessionManager {
   static Future<void> saveNotificationPreference(bool isEnabled) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyNotifications, isEnabled);
+    
+    try {
+      if (isEnabled) {
+        final timetable = await getTimetable();
+        if (timetable.isNotEmpty) {
+          await NotificationHelper.scheduleClassNotifications(timetable);
+        }
+      } else {
+        final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+            FlutterLocalNotificationsPlugin();
+        await flutterLocalNotificationsPlugin.cancelAll();
+      }
+    } catch (e) {
+      print("Notification preference error: $e");
+    }
   }
 
   static Future<bool> getNotificationPreference() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_keyNotifications) ?? false; // Defaults to false (off initially)
+    return prefs.getBool(_keyNotifications) ?? false;
   }
 }

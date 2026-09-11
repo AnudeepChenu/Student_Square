@@ -6,9 +6,11 @@ import 'screens/attendance_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/login_screen.dart';
 import 'session_manager.dart';
+import 'package:timezone/data/latest.dart' as tz;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  tz.initializeTimeZones();
   final profile = await SessionManager.getProfile();
   final bool isLoggedIn = profile.isNotEmpty && profile['name'] != null;
   final bool savedDarkMode = await SessionManager.getDarkModePreference();
@@ -127,7 +129,6 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
             child: Container(
               height: 64,
               decoration: BoxDecoration(
-                // Increased transparency for light mode (0.65 opacity)
                 color: (isDark ? const Color(0xFF1C1C1E) : Colors.white).withOpacity(isDark ? 0.20 : 0.35),
                 borderRadius: BorderRadius.circular(32),
                 border: Border.all(
