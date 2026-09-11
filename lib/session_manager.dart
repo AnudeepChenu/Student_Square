@@ -6,6 +6,8 @@ class SessionManager {
   static const String _keyAttendance = 'cached_attendance';
   static const String _keyTimetable = 'cached_timetable';
   static const String _keyTarget = 'target_attendance';
+  static const String _keyDarkMode = 'is_dark_mode';
+  static const String _keyNotifications = 'notifications_enabled';
 
   static Future<void> saveSession(String name, String hallTicket) async {
     final prefs = await SharedPreferences.getInstance();
@@ -70,5 +72,25 @@ class SessionManager {
   static Future<int> getTarget() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getInt(_keyTarget) ?? 75;
+  }
+
+  static Future<void> saveDarkModePreference(bool isDark) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyDarkMode, isDark);
+  }
+
+  static Future<bool> getDarkModePreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyDarkMode) ?? true;
+  }
+
+  static Future<void> saveNotificationPreference(bool isEnabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyNotifications, isEnabled);
+  }
+
+  static Future<bool> getNotificationPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyNotifications) ?? false;
   }
 }

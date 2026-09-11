@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../session_manager.dart';
 import 'login_screen.dart';
 
@@ -19,6 +20,11 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveClientMixin {
   Map<String, dynamic> profileData = {};
   bool isLoading = true;
+  int _devTapCount = 0;
+  bool _showContactEmail = false;
+  bool _notificationsEnabled = false;
+
+  final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
 
   @override
   bool get wantKeepAlive => true;
@@ -27,10 +33,12 @@ class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveCl
   void initState() {
     super.initState();
     _loadProfile();
+    _initNotifications();
   }
 
   void _loadProfile() async {
     final data = await SessionManager.getProfile();
+    final notifs = await SessionManager.getNotificationPreference();
     if (mounted) {
       setState(() {
         profileData = data.isNotEmpty ? data : {
@@ -40,9 +48,39 @@ class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveCl
           'branch': 'Computer Science Engineering',
           'semester': '4th Semester',
         };
+        _notificationsEnabled = notifs;
         isLoading = false;
       });
     }
+  }
+
+  void _initNotifications() async {
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/launcher_icon');
+
+    const InitializationSettings initializationSettings =
+        InitializationSettings(android: initializationSettingsAndroid);
+
+    await _notificationsPlugin.initialize(initializationSettings);
+  }
+
+  Future<void> _requestPermissionAndToggle(bool val) async {
+    if (val) {
+      final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
+          _notificationsPlugin.resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+      
+      final bool? granted = await androidImplementation?.requestNotificationsPermission();
+      
+      if (granted == false) {
+        return; // User declined system permission
+      }
+    }
+
+    setState(() {
+      _notificationsEnabled = val;
+    });
+    await SessionManager.saveNotificationPreference(val);
   }
 
   void _logout() async {
@@ -135,30 +173,56 @@ class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveCl
                   ),
 
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
                     decoration: BoxDecoration(
                       color: boxColor,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: borderColor, width: 1),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Column(
                       children: [
-                        const Row(
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Icon(Icons.dark_mode_rounded, size: 22, color: Color(0xFFFF3B30)),
-                            SizedBox(width: 14),
-                            Text(
-                              'Dark Mode',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            const Row(
+                              children: [
+                                Icon(Icons.dark_mode_rounded, size: 22, color: Color(0xFFFF3B30)),
+                                SizedBox(width: 14),
+                                Text(
+                                  'Dark Mode',
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                            Switch(
+                              value: isDark,
+                              activeColor: Colors.white,
+                              activeTrackColor: const Color(0xFFFF3B30),
+                              onChanged: (val) => widget.onThemeChanged(),
                             ),
                           ],
                         ),
-                        Switch(
-                          value: isDark,
-                          activeColor: Colors.white,
-                          activeTrackColor: const Color(0xFFFF3B30),
-                          onChanged: (val) => widget.onThemeChanged(),
+                        Divider(height: 1, color: borderColor),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.notifications_active_rounded, size: 22, color: Color(0xFFFF3B30)),
+                                SizedBox(width: 14),
+                                Text(
+                                  'Class Reminders',
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                            Switch(
+                              value: _notificationsEnabled,
+                              activeColor: Colors.white,
+                              activeTrackColor: const Color(0xFFFF3B30),
+                              onChanged: (val) => _requestPermissionAndToggle(val),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -201,18 +265,50 @@ class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveCl
                           ],
                         ),
                         const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Developer',
-                              style: TextStyle(fontSize: 15, color: isDark ? Colors.grey[400] : Colors.grey[600]),
-                            ),
-                            const Text(
-                              'ADP',
-                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFFFF3B30)),
-                            ),
-                          ],
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            setState(() {
+                              _devTapCount++;
+                              if (_devTapCount >= 16) {
+                                _showContactEmail = true;
+                              }
+                            });
+                          },
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Developer',
+                                    style: TextStyle(fontSize: 15, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                                  ),
+                                  const Text(
+                                    'ADP',
+                                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFFFF3B30)),
+                                  ),
+                                ],
+                              ),
+                              if (_showContactEmail) ...[
+                                const SizedBox(height: 12),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Contact',
+                                      style: TextStyle(fontSize: 15, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                                    ),
+                                    const Text(
+                                      'adp.official.in@gmail.com',
+                                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFFF3B30)),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
                       ],
                     ),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../session_manager.dart';
@@ -21,6 +22,7 @@ class HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMix
   List<Map<String, dynamic>> attendanceList = [];
   bool isLoading = true;
   String studentName = 'Student';
+  Timer? _timer;
 
   static final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
@@ -33,6 +35,18 @@ class HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMix
     super.initState();
     _initNotifications();
     _loadDashboardData();
+
+    _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      if (mounted) {
+        _loadDashboardData();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   void refreshData() {
@@ -41,27 +55,32 @@ class HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMix
 
   Future<void> _initNotifications() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('@mipmap/launcher_icon');
     const InitializationSettings initializationSettings =
         InitializationSettings(android: initializationSettingsAndroid);
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
   }
 
-  Future<void> _showClassNotification(String className, String roomNumber) async {
+  Future<void> _showClassNotification(String className, String roomNumber, String classTime) async {
+    final notificationsEnabled = await SessionManager.getNotificationPreference();
+    if (!notificationsEnabled) return;
+
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
-      'class_alerts',
+      'student_square_class_reminders',
       'Class Reminders',
-      channelDescription: 'Notifications for upcoming classes',
+      channelDescription: 'Notifications for upcoming classes before 15 minutes',
       importance: Importance.max,
       priority: Priority.high,
+      icon: 'app_logo',
     );
     const NotificationDetails platformChannelSpecifics =
         NotificationDetails(android: androidPlatformChannelSpecifics);
+    
     await flutterLocalNotificationsPlugin.show(
-      0,
-      'Next Class: $className',
-      roomNumber.isNotEmpty ? 'Room: $roomNumber' : 'Starting soon',
+      DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      'Next Class at $classTime',
+      '$className (room : ${roomNumber.isEmpty ? "N/A" : roomNumber})',
       platformChannelSpecifics,
     );
   }
@@ -153,7 +172,8 @@ class HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMix
           if (diff == 15) {
             final subName = _cleanSubjectAndFirmFaculty(upcoming['subject'] ?? '')['subject'] ?? 'Subject';
             final room = _extractRoomNumber(upcoming['subject'] ?? '');
-            _showClassNotification(subName, room);
+            final timeStr = upcoming['time']?.toString() ?? '';
+            _showClassNotification(subName, room, timeStr);
           }
 
           String timerText = '';
@@ -178,10 +198,12 @@ class HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMix
       }
     }
 
-    setState(() {
-      attendanceList = attendance;
-      isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        attendanceList = attendance;
+        isLoading = false;
+      });
+    }
   }
 
   String _extractRoomNumber(String subjectText) {
@@ -425,71 +447,75 @@ class HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMix
               ],
             ),
             const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: boxColor,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: borderColor, width: 1),
-              ),
-              child: attendanceList.isEmpty
-                  ? const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8.0),
-                      child: Center(
-                        child: Text(
-                          'No attendance data synced yet.',
-                          style: TextStyle(color: Colors.grey, fontSize: 14),
-                        ),
-                      ),
-                    )
-                  : Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: List.generate(
-                        attendanceList.length > 5 ? 5 : attendanceList.length,
-                        (index) {
-                          final subject = attendanceList[index];
-                          final name = subject['name'] ?? 'Subject';
-                          final held = subject['held'] ?? 0;
-                          final present = subject['present'] ?? 0;
-                          final percentage = held > 0 ? ((present / held) * 100).toStringAsFixed(1) : '0.0';
-                          final bool isLast = index == (attendanceList.length > 5 ? 5 : attendanceList.length) - 1;
-
-                          return Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        name.toUpperCase(),
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Text(
-                                      '$percentage%',
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              if (!isLast)
-                                Divider(color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.06), height: 1),
-                            ],
-                          );
-                        },
-                      ),
-                    ),
-            ),
+            countdownBox(boxColor, borderColor),
           ],
         ),
       ),
+    );
+  }
+
+  Widget countdownBox(Color boxColor, Color borderColor) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: boxColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor, width: 1),
+      ),
+      child: attendanceList.isEmpty
+          ? const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8.0),
+              child: Center(
+                child: Text(
+                  'No attendance data synced yet.',
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                ),
+              ),
+            )
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(
+                attendanceList.length > 5 ? 5 : attendanceList.length,
+                (index) {
+                  final subject = attendanceList[index];
+                  final name = subject['name'] ?? 'Subject';
+                  final held = subject['held'] ?? 0;
+                  final present = subject['present'] ?? 0;
+                  final percentage = held > 0 ? ((present / held) * 100).toStringAsFixed(1) : '0.0';
+                  final bool isLast = index == (attendanceList.length > 5 ? 5 : attendanceList.length) - 1;
+
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                name.toUpperCase(),
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              '$percentage%',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (!isLast)
+                        Divider(color: Colors.white.withOpacity(0.06), height: 1),
+                    ],
+                  );
+                },
+              ),
+            ),
     );
   }
 }

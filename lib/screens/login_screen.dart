@@ -18,26 +18,38 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _nameController = TextEditingController();
-  final _hallTicketController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
+
+  bool _isPasswordStrong(String password) {
+    final hasUppercase = password.contains(RegExp(r'[A-Z]'));
+    final hasLowercase = password.contains(RegExp(r'[a-z]'));
+    final hasDigit = password.contains(RegExp(r'\d'));
+    final hasSpecialChar = password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
+    final hasMinLength = password.length >= 8;
+
+    return hasMinLength && hasUppercase && hasLowercase && hasDigit && hasSpecialChar;
+  }
 
   void _handleLogin() async {
     final name = _nameController.text.trim();
-    final hallTicket = _hallTicketController.text.trim();
+    final password = _passwordController.text;
 
-    // Name constraint: Must only contain letters/spaces and not start/end with numbers
     final isValidName = RegExp(r'^[a-zA-Z\s]+$').hasMatch(name) && 
                         !RegExp(r'^\d').hasMatch(name) && 
                         !RegExp(r'\d$').hasMatch(name);
 
-    // Hall ticket constraints: Length 10, contains at least one letter, starts with 23, 24, 25, or 26
-    final isValidHallTicket = RegExp(r'^(23|24|25|26)').hasMatch(hallTicket) &&
-                              hallTicket.length == 10 &&
-                              RegExp(r'[a-zA-Z]').hasMatch(hallTicket);
+    if (!isValidName) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid name (no leading/trailing numbers).')),
+      );
+      return;
+    }
 
-    if (!isValidName || !isValidHallTicket) {
+    if (!_isPasswordStrong(password)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter a valid Name/Roll number'),
+          content: Text('Please make your password stronger (at least 8 chars, include uppercase, lowercase, number, and special character).'),
         ),
       );
       return;
@@ -45,8 +57,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
     await SessionManager.saveProfile({
       'name': name,
-      'rollNo': 'Hall Ticket: $hallTicket',
-      'email': '$hallTicket@sruniv.edu',
+      'rollNo': 'Secured Profile',
+      'email': 'student@sruniv.edu',
       'branch': 'Computer Science Engineering',
       'semester': '4th Semester',
     });
@@ -87,16 +99,22 @@ class _LoginScreenState extends State<LoginScreen> {
                   const Spacer(),
                   Center(
                     child: Container(
-                      width: 80,
-                      height: 80,
+                      width: 90,
+                      height: 90,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFF3B30).withOpacity(0.15),
                         shape: BoxShape.circle,
+                        color: const Color(0xFFFF3B30).withOpacity(0.15),
                       ),
-                      child: const Icon(
-                        Icons.school_rounded,
-                        size: 40,
-                        color: Color(0xFFFF3B30),
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/icon.png',
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => const Icon(
+                            Icons.school_rounded,
+                            size: 40,
+                            color: Color(0xFFFF3B30),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -111,7 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Enter your details to get started.',
+                    'Enter your name and a strong password to get started.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,
@@ -143,11 +161,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
                   TextField(
-                    controller: _hallTicketController,
+                    controller: _passwordController,
+                    obscureText: _obscurePassword,
                     style: const TextStyle(fontWeight: FontWeight.w600),
                     decoration: InputDecoration(
-                      labelText: 'Hall Ticket Number',
-                      hintText: 'e.g. 2403aXXXXX',
+                      labelText: 'Password',
+                      hintText: 'Enter a strong password',
                       filled: true,
                       fillColor: boxColor,
                       border: OutlineInputBorder(
@@ -161,6 +180,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(20),
                         borderSide: const BorderSide(color: Color(0xFFFF3B30), width: 1.5),
+                      ),
+                      suffixIcon: IconButton(
+                        icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.grey),
+                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                       ),
                     ),
                   ),

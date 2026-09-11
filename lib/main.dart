@@ -9,31 +9,36 @@ import 'session_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Uncomment the line below once if your session is stuck, then comment it back out
-  // await SessionManager.clearSession();
-
   final profile = await SessionManager.getProfile();
   final bool isLoggedIn = profile.isNotEmpty && profile['name'] != null;
+  final bool savedDarkMode = await SessionManager.getDarkModePreference();
 
-  runApp(StudentSquareApp(isLoggedIn: isLoggedIn));
+  runApp(StudentSquareApp(isLoggedIn: isLoggedIn, initialDarkMode: savedDarkMode));
 }
 
 class StudentSquareApp extends StatefulWidget {
   final bool isLoggedIn;
-  const StudentSquareApp({super.key, required this.isLoggedIn});
+  final bool initialDarkMode;
+  const StudentSquareApp({super.key, required this.isLoggedIn, required this.initialDarkMode});
 
   @override
   State<StudentSquareApp> createState() => _StudentSquareAppState();
 }
 
 class _StudentSquareAppState extends State<StudentSquareApp> {
-  late bool _isDarkMode = true;
+  late bool _isDarkMode;
 
-  void toggleTheme() {
+  @override
+  void initState() {
+    super.initState();
+    _isDarkMode = widget.initialDarkMode;
+  }
+
+  void toggleTheme() async {
     setState(() {
       _isDarkMode = !_isDarkMode;
     });
+    await SessionManager.saveDarkModePreference(_isDarkMode);
   }
 
   @override
@@ -94,6 +99,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
 
     final List<Widget> screens = [
       HomeScreen(
+        key: ValueKey(isDark),
         onThemeChanged: widget.onThemeChanged,
         isDarkMode: widget.isDarkMode,
         onNavigate: _navigateToTab,
@@ -121,7 +127,8 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
             child: Container(
               height: 64,
               decoration: BoxDecoration(
-                color: (isDark ? const Color(0xFF1C1C1E) : Colors.white).withOpacity(0.40),
+                // Increased transparency for light mode (0.65 opacity)
+                color: (isDark ? const Color(0xFF1C1C1E) : Colors.white).withOpacity(isDark ? 0.20 : 0.35),
                 borderRadius: BorderRadius.circular(32),
                 border: Border.all(
                   color: (isDark ? Colors.white : Colors.black).withOpacity(0.12),
