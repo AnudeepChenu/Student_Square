@@ -91,6 +91,6 @@ class SessionManager {
 
   static Future<bool> getNotificationPreference() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_keyNotifications) ?? false;
+    return prefs.getBool(_keyNotifications) ?? false; // Defaults to false (off initially)
   }
 }

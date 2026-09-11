@@ -109,92 +109,76 @@ class HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMix
 
     if (timetable.isNotEmpty) {
       final now = DateTime.now();
-      final daysMap = {
-        DateTime.monday: 'Monday',
-        DateTime.tuesday: 'Tuesday',
-        DateTime.wednesday: 'Wednesday',
-        DateTime.thursday: 'Thursday',
-        DateTime.friday: 'Friday',
-        DateTime.saturday: 'Saturday',
-        DateTime.sunday: 'Sunday',
-      };
       
-      final currentDayName = daysMap[now.weekday] ?? 'Monday';
-      final currentTotalMinutes = now.hour * 60 + now.minute;
-      
-      final todaysClasses = timetable.where((item) {
-        final itemDay = item['day']?.toString().trim().toLowerCase() ?? '';
-        return itemDay == currentDayName.toLowerCase();
-      }).toList();
+      int dayToInt(String dayName) {
+        switch (dayName.trim().toLowerCase()) {
+          case 'monday': return DateTime.monday;
+          case 'tuesday': return DateTime.tuesday;
+          case 'wednesday': return DateTime.wednesday;
+          case 'thursday': return DateTime.thursday;
+          case 'friday': return DateTime.friday;
+          case 'saturday': return DateTime.saturday;
+          case 'sunday': return DateTime.sunday;
+          default: return DateTime.monday;
+        }
+      }
 
-      if (todaysClasses.isNotEmpty) {
-        Map<String, dynamic>? upcoming;
-        int minDiff = 999999;
-        bool allCompleted = true;
+      Map<String, dynamic>? upcoming;
+      Duration minDuration = const Duration(days: 999);
 
-        for (var item in todaysClasses) {
-          final timeStr = item['time']?.toString() ?? '';
-          final classMinutes = _parseTimeToMinutes(timeStr);
-          final diff = classMinutes - currentTotalMinutes;
-          
-          if (diff >= -50) {
-            allCompleted = false;
-          }
+      for (var item in timetable) {
+        final itemDayStr = item['day']?.toString() ?? '';
+        final timeStr = item['time']?.toString() ?? '';
+        
+        final startTimeMinutes = _parseTimeToMinutes(timeStr);
+        final targetWeekday = dayToInt(itemDayStr);
+        
+        int dayDifference = targetWeekday - now.weekday;
+        if (dayDifference < 0 || (dayDifference == 0 && startTimeMinutes < (now.hour * 60 + now.minute - 50))) {
+          dayDifference += 7;
+        }
+        
+        final classHour = startTimeMinutes ~/ 60;
+        final classMinute = startTimeMinutes % 60;
+        
+        final classDateTime = DateTime(now.year, now.month, now.day, classHour, classMinute).add(Duration(days: dayDifference));
+        final durationDiff = classDateTime.difference(now);
+        
+        if (durationDiff > const Duration(minutes: -50) && durationDiff < minDuration) {
+          minDuration = durationDiff;
+          upcoming = item;
+        }
+      }
 
-          if (diff >= -50 && diff <= 15 && diff < minDiff) {
-            minDiff = diff;
-            upcoming = item;
-          }
+      if (upcoming != null) {
+        final totalMinutesDiff = minDuration.inMinutes;
+
+        if (totalMinutesDiff == 15) {
+          final subName = _cleanSubjectAndFirmFaculty(upcoming['subject'] ?? '')['subject'] ?? 'Subject';
+          final room = _extractRoomNumber(upcoming['subject'] ?? '');
+          final timeStr = upcoming['time']?.toString() ?? '';
+          _showClassNotification(subName, room, timeStr);
         }
 
-        if (upcoming == null) {
-          for (var item in todaysClasses) {
-            final classMinutes = _parseTimeToMinutes(item['time']?.toString() ?? '');
-            final diff = classMinutes - currentTotalMinutes;
-            if (diff > 15 && diff < minDiff) {
-              minDiff = diff;
-              upcoming = item;
-            }
-          }
-        }
-
-        if (allCompleted || upcoming == null) {
-          upcoming = todaysClasses.first;
-          setState(() {
-            isCompleted = true;
-            nextClass = upcoming;
-            timeRemainingText = '';
-          });
+        String timerText = '';
+        if (totalMinutesDiff <= 0) {
+          timerText = 'Ongoing now';
+        } else if (totalMinutesDiff < 60) {
+          timerText = 'in $totalMinutesDiff min';
+        } else if (totalMinutesDiff < 1440) {
+          final h = totalMinutesDiff ~/ 60;
+          final m = totalMinutesDiff % 60;
+          timerText = 'in ${h}h ${m}m';
         } else {
-          final classMinutes = _parseTimeToMinutes(upcoming['time']?.toString() ?? '');
-          final diff = classMinutes - currentTotalMinutes;
-
-          if (diff == 15) {
-            final subName = _cleanSubjectAndFirmFaculty(upcoming['subject'] ?? '')['subject'] ?? 'Subject';
-            final room = _extractRoomNumber(upcoming['subject'] ?? '');
-            final timeStr = upcoming['time']?.toString() ?? '';
-            _showClassNotification(subName, room, timeStr);
-          }
-
-          String timerText = '';
-          if (diff > 0) {
-            if (diff < 60) {
-              timerText = 'in $diff min';
-            } else {
-              final h = diff ~/ 60;
-              final m = diff % 60;
-              timerText = 'in ${h}h ${m}m';
-            }
-          } else {
-            timerText = 'Ongoing now';
-          }
-
-          setState(() {
-            isCompleted = false;
-            nextClass = upcoming;
-            timeRemainingText = timerText;
-          });
+          final days = totalMinutesDiff ~/ 1440;
+          timerText = 'in $days day${days > 1 ? 's' : ''}';
         }
+
+        setState(() {
+          isCompleted = false;
+          nextClass = upcoming;
+          timeRemainingText = timerText;
+        });
       }
     }
 
@@ -286,9 +270,9 @@ class HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMix
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Student Square', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+            const Text('  Student Square', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
             const SizedBox(height: 2),
-            Text('Welcome, $studentName', style: TextStyle(fontSize: 13, color: Colors.grey.shade400)),
+            Text('   Welcome, $studentName', style: TextStyle(fontSize: 13, color: Colors.grey.shade400)),
           ],
         ),
         backgroundColor: Colors.transparent,
@@ -327,7 +311,7 @@ class HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMix
                           child: Padding(
                             padding: EdgeInsets.all(12.0),
                             child: Text(
-                              'No classes scheduled for today',
+                              'No classes scheduled',
                               style: TextStyle(color: Colors.grey, fontSize: 14),
                             ),
                           ),
@@ -399,7 +383,7 @@ class HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMix
                                 const Icon(Icons.access_time, size: 15, color: Colors.grey),
                                 const SizedBox(width: 6),
                                 Text(
-                                  nextClass!['time']?.toString() ?? '',
+                                  '${nextClass!['day'] ?? ''} • ${nextClass!['time']?.toString() ?? ''}',
                                   style: const TextStyle(
                                     color: Colors.grey,
                                     fontSize: 13,

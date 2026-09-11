@@ -70,10 +70,11 @@ class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveCl
           _notificationsPlugin.resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>();
       
+      // Requests the standard, native notification permission popup dialog
       final bool? granted = await androidImplementation?.requestNotificationsPermission();
       
-      if (granted == false) {
-        return; // User declined system permission
+      if (granted != true) {
+        return; // Keeps the toggle off if the user denies the permission
       }
     }
 
@@ -109,7 +110,7 @@ class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveCl
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile & Settings', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        title: const Text('  Profile & Settings', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -259,7 +260,7 @@ class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveCl
                               style: TextStyle(fontSize: 15, color: isDark ? Colors.grey[400] : Colors.grey[600]),
                             ),
                             const Text(
-                              'beta V1.2',
+                              'Version 2',
                               style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                             ),
                           ],
