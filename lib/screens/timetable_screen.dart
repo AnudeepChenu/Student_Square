@@ -20,7 +20,7 @@ class _TimetableScreenState extends State<TimetableScreen> with AutomaticKeepAli
     'M': 'Monday',
     'T': 'Tuesday',
     'W': 'Wednesday',
-    'T': 'Thursday',
+    'Th': 'Thursday',
     'F': 'Friday',
   };
 
@@ -36,7 +36,7 @@ class _TimetableScreenState extends State<TimetableScreen> with AutomaticKeepAli
       DateTime.monday: 'M',
       DateTime.tuesday: 'T',
       DateTime.wednesday: 'W',
-      DateTime.thursday: 'T',
+      DateTime.thursday: 'Th',
       DateTime.friday: 'F',
       DateTime.saturday: 'M',
       DateTime.sunday: 'M',
