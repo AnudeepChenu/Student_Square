@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../session_manager.dart';
 import 'login_screen.dart';
 
@@ -17,14 +16,23 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveClientMixin {
+class _ProfileScreenState extends State<ProfileScreen>
+    with AutomaticKeepAliveClientMixin {
   Map<String, dynamic> profileData = {};
   bool isLoading = true;
-  int _devTapCount = 0;
-  bool _showContactEmail = false;
-  bool _notificationsEnabled = false;
 
-  final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
+  // StudentSquare unified theme
+  static const Color accent = Color(0xFF6376F5);
+  static const Color healthy = Color(0xFF55C98A);
+  static const Color danger = Color(0xFFE86B6B);
+
+  static const Color darkBackground = Color(0xFF090A0B);
+  static const Color darkSurface = Color(0xFF111315);
+  static const Color darkSecondary = Color(0xFF181A1D);
+
+  static const Color lightBackground = Color(0xFFF6F6F3);
+  static const Color lightSurface = Color(0xFFFFFFFF);
+  static const Color lightSecondary = Color(0xFFEEEEEA);
 
   @override
   bool get wantKeepAlive => true;
@@ -33,318 +41,574 @@ class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveCl
   void initState() {
     super.initState();
     _loadProfile();
-    _initNotifications();
   }
 
-  void _loadProfile() async {
+  Future<void> _loadProfile() async {
     final data = await SessionManager.getProfile();
-    final notifs = await SessionManager.getNotificationPreference();
-    if (mounted) {
-      setState(() {
-        profileData = data.isNotEmpty ? data : {
-          'name': 'Student',
-          'rollNo': 'Hall Ticket: 2403aXXXXX',
-          'email': 'student@sruniv.edu',
-          'branch': 'Computer Science Engineering',
-          'semester': '4th Semester',
-        };
-        _notificationsEnabled = notifs;
-        isLoading = false;
-      });
-    }
-  }
 
-  void _initNotifications() async {
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/launcher_icon');
-
-    const InitializationSettings initializationSettings =
-        InitializationSettings(android: initializationSettingsAndroid);
-
-    await _notificationsPlugin.initialize(initializationSettings);
-  }
-
-  Future<void> _requestPermissionAndToggle(bool val) async {
-    if (val) {
-      final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
-          _notificationsPlugin.resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>();
-      
-      // Requests the standard, native notification permission popup dialog
-      final bool? granted = await androidImplementation?.requestNotificationsPermission();
-      
-      if (granted != true) {
-        return; // Keeps the toggle off if the user denies the permission
-      }
-    }
+    if (!mounted) return;
 
     setState(() {
-      _notificationsEnabled = val;
+      profileData = data.isNotEmpty
+          ? data
+          : {
+              'name': 'Student',
+              'rollNo': 'Hall Ticket: 2403aXXXXX',
+              'email': 'student@sruniv.edu',
+              'branch': 'Computer Science Engineering',
+              'semester': '4th Semester',
+            };
+
+      isLoading = false;
     });
-    await SessionManager.saveNotificationPreference(val);
   }
 
-  void _logout() async {
+  Future<void> _logout() async {
     await SessionManager.clearSession();
-    if (mounted) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(
-          builder: (context) => LoginScreen(
-            onThemeChanged: widget.onThemeChanged,
-            isDarkMode: widget.isDarkMode,
-          ),
+
+    if (!mounted) return;
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LoginScreen(
+          onThemeChanged: widget.onThemeChanged,
+          isDarkMode: widget.isDarkMode,
         ),
-        (route) => false,
-      );
-    }
+      ),
+      (_) => false,
+    );
+  }
+
+  void _toggleTheme() {
+    widget.onThemeChanged();
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    bool isDark = widget.isDarkMode;
-    
-    Color boxColor = isDark ? const Color(0xFF161618) : const Color(0xFFF2F2F7);
-    Color borderColor = isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08);
+
+    final bool isDark = widget.isDarkMode;
+
+    final Color background =
+        isDark ? darkBackground : lightBackground;
+
+    final Color surface =
+        isDark ? darkSurface : lightSurface;
+
+    final Color secondarySurface =
+        isDark ? darkSecondary : lightSecondary;
+
+    final Color primary =
+        isDark ? Colors.white : const Color(0xFF111111);
+
+    final Color secondary =
+        isDark ? const Color(0xFF92959A) : const Color(0xFF77797D);
+
+    final Color divider = isDark
+        ? Colors.white.withOpacity(0.055)
+        : Colors.black.withOpacity(0.055);
 
     return Scaffold(
+      backgroundColor: background,
+
       appBar: AppBar(
-        title: const Text('  Profile & Settings', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        backgroundColor: Colors.transparent,
+        backgroundColor: background,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
-      ),
-      body: isLoading
-          ? Center(child: CircularProgressIndicator(color: isDark ? Colors.white : Colors.black))
-          : Padding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-              child: ListView(
-                padding: const EdgeInsets.only(bottom: 120),
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: boxColor,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: borderColor, width: 1),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 60,
-                          height: 60,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFFF3B30),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.person_rounded, size: 32, color: Colors.white),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                profileData['name']?.toString() ?? 'Student',
-                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                profileData['rollNo']?.toString() ?? 'Hall Ticket: 2403aXXXXX',
-                                style: TextStyle(fontSize: 13, color: isDark ? Colors.grey[400] : Colors.grey[600]),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  Padding(
-                    padding: const EdgeInsets.only(left: 4, bottom: 12),
-                    child: Text(
-                      'Preferences',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.grey[400] : Colors.grey[600],
-                      ),
-                    ),
-                  ),
+        centerTitle: false,
 
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: boxColor,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: borderColor, width: 1),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Row(
-                              children: [
-                                Icon(Icons.dark_mode_rounded, size: 22, color: Color(0xFFFF3B30)),
-                                SizedBox(width: 14),
-                                Text(
-                                  'Dark Mode',
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                                ),
-                              ],
-                            ),
-                            Switch(
-                              value: isDark,
-                              activeColor: Colors.white,
-                              activeTrackColor: const Color(0xFFFF3B30),
-                              onChanged: (val) => widget.onThemeChanged(),
-                            ),
-                          ],
-                        ),
-                        Divider(height: 1, color: borderColor),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Row(
-                              children: [
-                                Icon(Icons.notifications_active_rounded, size: 22, color: Color(0xFFFF3B30)),
-                                SizedBox(width: 14),
-                                Text(
-                                  'Class Reminders',
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                                ),
-                              ],
-                            ),
-                            Switch(
-                              value: _notificationsEnabled,
-                              activeColor: Colors.white,
-                              activeTrackColor: const Color(0xFFFF3B30),
-                              onChanged: (val) => _requestPermissionAndToggle(val),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  Padding(
-                    padding: const EdgeInsets.only(left: 4, bottom: 12),
-                    child: Text(
-                      'App Info',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.grey[400] : Colors.grey[600],
-                      ),
-                    ),
-                  ),
-
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: boxColor,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: borderColor, width: 1),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Version',
-                              style: TextStyle(fontSize: 15, color: isDark ? Colors.grey[400] : Colors.grey[600]),
-                            ),
-                            const Text(
-                              'Version 2',
-                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () {
-                            setState(() {
-                              _devTapCount++;
-                              if (_devTapCount >= 16) {
-                                _showContactEmail = true;
-                              }
-                            });
-                          },
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Developer',
-                                    style: TextStyle(fontSize: 15, color: isDark ? Colors.grey[400] : Colors.grey[600]),
-                                  ),
-                                  const Text(
-                                    'ADP',
-                                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFFFF3B30)),
-                                  ),
-                                ],
-                              ),
-                              if (_showContactEmail) ...[
-                                const SizedBox(height: 12),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Contact',
-                                      style: TextStyle(fontSize: 15, color: isDark ? Colors.grey[400] : Colors.grey[600]),
-                                    ),
-                                    const Text(
-                                      'adp.official.in@gmail.com',
-                                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFFF3B30)),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  OutlinedButton(
-                    onPressed: _logout,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFFFF3B30),
-                      side: const BorderSide(color: Color(0xFFFF3B30), width: 1.5),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.logout_rounded, size: 18, color: Color(0xFFFF3B30)),
-                        SizedBox(width: 8),
-                        Text(
-                          'Log Out',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFFFF3B30),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'PROFILE',
+              style: TextStyle(
+                color: secondary,
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.8,
               ),
             ),
+            const SizedBox(height: 2),
+            Text(
+              'Profile',
+              style: TextStyle(
+                color: primary,
+                fontSize: 28,
+                height: 1,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -1,
+              ),
+            ),
+          ],
+        ),
+
+        actions: [
+          _themeButton(
+            isDark: isDark,
+            surface: secondarySurface,
+            primary: primary,
+          ),
+          const SizedBox(width: 16),
+        ],
+
+        toolbarHeight: 72,
+      ),
+
+      body: isLoading
+          ? Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: accent,
+                ),
+              ),
+            )
+          : ListView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(
+                18,
+                4,
+                18,
+                120,
+              ),
+              children: [
+                _buildProfileCard(
+                  isDark: isDark,
+                  surface: surface,
+                  primary: primary,
+                  secondary: secondary,
+                  divider: divider,
+                ),
+
+                const SizedBox(height: 28),
+
+                _sectionLabel(
+                  'PROFILE DETAILS',
+                  secondary,
+                ),
+
+                const SizedBox(height: 10),
+
+                _buildDetailsCard(
+                  isDark: isDark,
+                  surface: surface,
+                  primary: primary,
+                  secondary: secondary,
+                  divider: divider,
+                ),
+
+                const SizedBox(height: 28),
+
+                _sectionLabel(
+                  'ABOUT',
+                  secondary,
+                ),
+
+                const SizedBox(height: 10),
+
+                _buildAboutCard(
+                  isDark: isDark,
+                  surface: surface,
+                  primary: primary,
+                  secondary: secondary,
+                  divider: divider,
+                ),
+
+                const SizedBox(height: 28),
+
+                _buildLogoutButton(
+                  isDark: isDark,
+                ),
+              ],
+            ),
+    );
+  }
+
+  // ============================================================
+  // THEME BUTTON
+  // ============================================================
+
+  Widget _themeButton({
+    required bool isDark,
+    required Color surface,
+    required Color primary,
+  }) {
+    return Tooltip(
+      message: isDark ? 'Switch to light mode' : 'Switch to dark mode',
+      child: GestureDetector(
+        onTap: _toggleTheme,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutCubic,
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: surface,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withOpacity(0.055)
+                  : Colors.black.withOpacity(0.055),
+            ),
+          ),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 240),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, animation) {
+              return RotationTransition(
+                turns: Tween<double>(
+                  begin: 0.85,
+                  end: 1,
+                ).animate(animation),
+                child: FadeTransition(
+                  opacity: animation,
+                  child: child,
+                ),
+              );
+            },
+            child: Icon(
+              isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
+              key: ValueKey(isDark),
+              size: 19,
+              color: isDark ? Colors.white : primary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // PROFILE CARD
+  // ============================================================
+
+  Widget _buildProfileCard({
+    required bool isDark,
+    required Color surface,
+    required Color primary,
+    required Color secondary,
+    required Color divider,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: divider,
+        ),
+      ),
+      child: Row(
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+            width: 62,
+            height: 62,
+            decoration: BoxDecoration(
+              color: accent,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.person_rounded,
+              size: 30,
+              color: Colors.white,
+            ),
+          ),
+
+          const SizedBox(width: 16),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  profileData['name']?.toString() ?? 'Student',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: primary,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+
+                const SizedBox(height: 5),
+
+                Text(
+                  profileData['rollNo']?.toString() ??
+                      'Secured Profile',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: secondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // SECTION LABEL
+  // ============================================================
+
+  Widget _sectionLabel(
+    String text,
+    Color color,
+  ) {
+    return Text(
+      text,
+      style: TextStyle(
+        color: color,
+        fontSize: 9.5,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 1.6,
+      ),
+    );
+  }
+
+  // ============================================================
+  // PROFILE DETAILS
+  // ============================================================
+
+  Widget _buildDetailsCard({
+    required bool isDark,
+    required Color surface,
+    required Color primary,
+    required Color secondary,
+    required Color divider,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: divider,
+        ),
+      ),
+      child: Column(
+        children: [
+          _infoTile(
+            Icons.school_outlined,
+            'Branch',
+            profileData['branch']?.toString() ??
+                'Computer Science Engineering',
+            primary,
+            secondary,
+          ),
+
+          Divider(
+            height: 1,
+            indent: 58,
+            endIndent: 18,
+            color: divider,
+          ),
+
+          _infoTile(
+            Icons.layers_outlined,
+            'Semester',
+            profileData['semester']?.toString() ??
+                '4th Semester',
+            primary,
+            secondary,
+          ),
+
+          Divider(
+            height: 1,
+            indent: 58,
+            endIndent: 18,
+            color: divider,
+          ),
+
+          _infoTile(
+            Icons.email_outlined,
+            'Email',
+            profileData['email']?.toString() ??
+                'student@sruniv.edu',
+            primary,
+            secondary,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // ABOUT
+  // ============================================================
+
+  Widget _buildAboutCard({
+    required bool isDark,
+    required Color surface,
+    required Color primary,
+    required Color secondary,
+    required Color divider,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: divider,
+        ),
+      ),
+      child: Column(
+        children: [
+          _infoTile(
+            Icons.apps_rounded,
+            'App Version',
+            'v3',
+            primary,
+            secondary,
+          ),
+
+          Divider(
+            height: 1,
+            indent: 58,
+            endIndent: 18,
+            color: divider,
+          ),
+
+          _infoTile(
+            Icons.code_rounded,
+            'Developer',
+            'ADP',
+            primary,
+            secondary,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // LOGOUT
+  // ============================================================
+
+  Widget _buildLogoutButton({
+    required bool isDark,
+  }) {
+    final Color logoutColor = danger;
+
+    return SizedBox(
+      height: 52,
+      child: OutlinedButton(
+        onPressed: _logout,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: logoutColor,
+          side: BorderSide(
+            color: logoutColor.withOpacity(0.35),
+          ),
+          backgroundColor: logoutColor.withOpacity(0.035),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(17),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.logout_rounded,
+              size: 18,
+              color: logoutColor,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Log Out',
+              style: TextStyle(
+                color: logoutColor,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // INFO TILE
+  // ============================================================
+
+  Widget _infoTile(
+    IconData icon,
+    String label,
+    String value,
+    Color primary,
+    Color secondary,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        18,
+        15,
+        18,
+        15,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: accent.withOpacity(0.09),
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: Icon(
+              icon,
+              size: 18,
+              color: accent,
+            ),
+          ),
+
+          const SizedBox(width: 13),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: secondary,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.15,
+                  ),
+                ),
+
+                const SizedBox(height: 3),
+
+                Text(
+                  value,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: primary,
+                    fontSize: 13.5,
+                    height: 1.15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

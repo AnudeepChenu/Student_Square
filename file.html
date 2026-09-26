@@ -1,0 +1,398 @@
+Here is the complete, single-file HTML application. It includes the full form layout, cascading dropdown logic, CORS proxy handling (so it works when opened directly in a browser), and dynamic timetable rendering.
+
+Save the code below as `index.html` and open it in any web browser.
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SRU Timetable Portal</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .card {
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+        h2 {
+            margin-top: 0;
+            color: #1a365d;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+        label span {
+            color: #e53e3e;
+        }
+        select, button {
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e0;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        select:focus {
+            border-color: #3182ce;
+        }
+        button {
+            background-color: #3182ce;
+            color: white;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #2b6cb0;
+        }
+        button:disabled {
+            background-color: #a0aec0;
+            cursor: not-allowed;
+        }
+        .status {
+            font-size: 14px;
+            margin-top: 10px;
+            font-weight: 500;
+        }
+        .error { color: #e53e3e; }
+        .success { color: #38a169; }
+        .info { color: #3182ce; }
+        
+        /* Table Formatting */
+        .table-responsive {
+            overflow-x: auto;
+            margin-top: 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        th, td {
+            border: 1px solid #cbd5e0;
+            padding: 8px 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #edf2f7;
+            font-weight: 700;
+        }
+        tr:nth-child(even) {
+            background-color: #f7fafc;
+        }
+        .schedule-item {
+            margin-bottom: 6px;
+            padding-bottom: 4px;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+        .schedule-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h2>SRU Timetable Fetcher</h2>
+        <form id="timetableForm">
+            <div class="grid">
+                <div class="form-group">
+                    <label for="degree">Degree <span>*</span></label>
+                    <select id="degree" required>
+                        <option value="">Select Degree</option>
+                        <option value="B.Com-BM">B.Com-BM</option>
+                        <option value="B.Sc(Comp.)-CSAI">B.Sc(Comp.)-CSAI</option>
+                        <option value="B.Sc.(Hons.)-AGRI">B.Sc.(Hons.)-AGRI</option>
+                        <option value="BBA-BM">BBA-BM</option>
+                        <option value="BCA-CSAI">BCA-CSAI</option>
+                        <option value="BTECH">BTECH</option>
+                        <option value="BTECH-CE">BTECH-CE</option>
+                        <option value="BTECH-CSE">BTECH-CSE</option>
+                        <option value="BTECH-ECE">BTECH-ECE</option>
+                        <option value="BTECH-EEE">BTECH-EEE</option>
+                        <option value="BTECH-IEP-CSE">BTECH-IEP-CSE</option>
+                        <option value="BTECH-ME">BTECH-ME</option>
+                        <option value="M.Sc-CSE">M.Sc-CSE</option>
+                        <option value="M.Sc. (Agriculture)-AGRI">M.Sc. (Agriculture)-AGRI</option>
+                        <option value="M.Sc. (Agrl. Extension)-AGRI">M.Sc. (Agrl. Extension)-AGRI</option>
+                        <option value="M.Sc. (Agronomy)-AGRI">M.Sc. (Agronomy)-AGRI</option>
+                        <option value="M.Sc. (Entomology)-AGRI">M.Sc. (Entomology)-AGRI</option>
+                        <option value="M.Sc. (Genetics and Plant Breeding)-AGRI">M.Sc. (Genetics and Plant Breeding)-AGRI</option>
+                        <option value="M.Sc. (Horticulture)-AGRI">M.Sc. (Horticulture)-AGRI</option>
+                        <option value="M.Sc.(Comp. Sci.)-CSE">M.Sc.(Comp. Sci.)-CSE</option>
+                        <option value="MBA-BM">MBA-BM</option>
+                        <option value="MCA-CSE">MCA-CSE</option>
+                        <option value="MTECH-CE">MTECH-CE</option>
+                        <option value="MTECH-CSE">MTECH-CSE</option>
+                        <option value="MTECH-ECE">MTECH-ECE</option>
+                        <option value="MTECH-EEE">MTECH-EEE</option>
+                        <option value="MTECH-ME">MTECH-ME</option>
+                        <option value="PhD-BIO-BS">PhD-BIO-BS</option>
+                        <option value="PhD-BM ">PhD-BM </option>
+                        <option value="PhD-BS ">PhD-BS </option>
+                        <option value="PhD-CE">PhD-CE</option>
+                        <option value="PhD-CHE-BS">PhD-CHE-BS</option>
+                        <option value="PhD-ECE">PhD-ECE</option>
+                        <option value="PhD-EEE">PhD-EEE</option>
+                        <option value="PhD-Math">PhD-Math</option>
+                        <option value="PhD-ME">PhD-ME</option>
+                        <option value="PhD-PHY-BS">PhD-PHY-BS</option>
+                        <option value="PhD-PSY-BS">PhD-PSY-BS</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="year">Year <span>*</span></label>
+                    <select id="year" required disabled>
+                        <option value="">Select Year</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="batch">Batch <span>*</span></label>
+                    <select id="batch" required disabled>
+                        <option value="">Select Batch</option>
+                    </select>
+                </div>
+            </div>
+
+            <button type="submit" id="submitBtn" disabled>Search Timetable</button>
+        </form>
+        <div id="statusMessage" class="status"></div>
+    </div>
+
+    <div class="card" id="resultCard" style="display: none;">
+        <h2>Timetable Results</h2>
+        <div id="resultContent" class="table-responsive"></div>
+    </div>
+</div>
+
+<script>
+const BASE_URL = 'https://timetable.sruniv.com';
+const PROXY = 'https://corsproxy.io/?';
+const CSRF_TOKEN = 'A1F2pwm5tVJDayOOkL41QnapsbMWg2CqpghR9Vgt';
+
+const degreeEl = document.getElementById('degree');
+const yearEl = document.getElementById('year');
+const batchEl = document.getElementById('batch');
+const submitBtn = document.getElementById('submitBtn');
+const statusEl = document.getElementById('statusMessage');
+const resultCard = document.getElementById('resultCard');
+const resultContent = document.getElementById('resultContent');
+
+// Utility to handle fetch through CORS proxy if running locally
+async function apiFetch(endpoint, options = {}) {
+    const targetUrl = `${BASE_URL}${endpoint}`;
+    const urlWithProxy = PROXY + encodeURIComponent(targetUrl);
+
+    try {
+        const response = await fetch(urlWithProxy, options);
+        if (!response.ok) {
+            throw new Error(`HTTP Error: ${response.status}`);
+        }
+        return await response.json();
+    } catch (err) {
+        // Fallback: Try direct request if proxy fails
+        const response = await fetch(targetUrl, options);
+        return await response.json();
+    }
+}
+
+// 1. Degree Selected -> Fetch Years
+degreeEl.addEventListener('change', async function () {
+    const degree = this.value;
+    
+    yearEl.innerHTML = '<option value="">Select Year</option>';
+    batchEl.innerHTML = '<option value="">Select Batch</option>';
+    yearEl.disabled = true;
+    batchEl.disabled = true;
+    submitBtn.disabled = true;
+    statusEl.textContent = '';
+
+    if (!degree) return;
+
+    statusEl.className = 'status info';
+    statusEl.textContent = 'Loading available years...';
+
+    try {
+        const data = await apiFetch(`/get-yearbpublic?degree=${encodeURIComponent(degree)}`);
+        
+        if (data && data.yearList && data.yearList.length > 0) {
+            data.yearList.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.year;
+                opt.textContent = item.year;
+                yearEl.appendChild(opt);
+            });
+            yearEl.disabled = false;
+            statusEl.textContent = '';
+        } else {
+            statusEl.className = 'status error';
+            statusEl.textContent = 'No years found for selected degree.';
+        }
+    } catch (err) {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'Failed to load years. Check network connection.';
+    }
+});
+
+// 2. Year Selected -> Fetch Batches
+yearEl.addEventListener('change', async function () {
+    const year = this.value;
+    const degree = degreeEl.value;
+
+    batchEl.innerHTML = '<option value="">Select Batch</option>';
+    batchEl.disabled = true;
+    submitBtn.disabled = true;
+
+    if (!year || !degree) return;
+
+    statusEl.className = 'status info';
+    statusEl.textContent = 'Loading available batches...';
+
+    try {
+        const data = await apiFetch(`/get-batchbpublic?year=${encodeURIComponent(year)}&degree=${encodeURIComponent(degree)}`);
+        
+        if (data && data.batchList && data.batchList.length > 0) {
+            data.batchList.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.batch;
+                opt.textContent = item.batch;
+                batchEl.appendChild(opt);
+            });
+            batchEl.disabled = false;
+            statusEl.textContent = '';
+        } else {
+            statusEl.className = 'status error';
+            statusEl.textContent = 'No batches found.';
+        }
+    } catch (err) {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'Failed to load batches.';
+    }
+});
+
+// 3. Batch Selected -> Enable Submit Button
+batchEl.addEventListener('change', function () {
+    submitBtn.disabled = !this.value;
+});
+
+// 4. Form Submit -> Fetch Timetable Grid
+document.getElementById('timetableForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const year = yearEl.value;
+    const batch = batchEl.value;
+
+    statusEl.className = 'status info';
+    statusEl.textContent = 'Fetching timetable schedule...';
+    submitBtn.disabled = true;
+
+    const formData = new URLSearchParams();
+    formData.append('_token', CSRF_TOKEN);
+    formData.append('batch', batch);
+    formData.append('year', year);
+
+    try {
+        const data = await apiFetch('/searchBatchReportPublic', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData.toString()
+        });
+
+        submitBtn.disabled = false;
+
+        if (data && data.success && data.data) {
+            statusEl.className = 'status success';
+            statusEl.textContent = 'Timetable loaded successfully!';
+            renderTimetableTable(data.data);
+        } else {
+            statusEl.className = 'status error';
+            statusEl.textContent = data.error || 'No timetable records found.';
+            resultCard.style.display = 'none';
+        }
+    } catch (err) {
+        submitBtn.disabled = false;
+        statusEl.className = 'status error';
+        statusEl.textContent = 'Error fetching timetable schedule.';
+    }
+});
+
+// Function to render HTML table from schedule JSON data
+function renderTimetableTable(scheduleData) {
+    const times = ['08:30', '09:30', '10:30', '11:30', '12:30', '13:30', '14:30', '15:30', '16:30', '17:30', '18:30', '19:30', '20:30'];
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+    let html = '<table><thead><tr><th>Time</th>';
+    days.forEach(day => html += `<th>${day}</th>`);
+    html += '</tr></thead><tbody>';
+
+    times.forEach(time => {
+        html += `<tr><td><strong>${time}</strong></td>`;
+        days.forEach(day => {
+            html += '<td>';
+            const slots = scheduleData[day] ? scheduleData[day][time] : null;
+
+            if (slots && slots.length > 0) {
+                slots.forEach(s => {
+                    const ltp = s.ltp.trim() === 'Lecture' ? 'L' : (s.ltp.trim() === 'Lab' ? 'P' : s.ltp.trim());
+                    html += `<div class="schedule-item">
+                        <strong>${s.subject.trim()}</strong> (${ltp})<br>
+                        <em>Room: ${s.room_name.trim()}</em><br>
+                        <small>${s.facultyName.trim()}</small>
+                    </div>`;
+                });
+            }
+            html += '</td>';
+        });
+        html += '</tr>';
+    });
+
+    html += '</tbody></table>';
+    resultContent.innerHTML = html;
+    resultCard.style.display = 'block';
+}
+</script>
+
+</body>
+</html>
+
+```
